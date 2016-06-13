@@ -152,6 +152,7 @@ extern bool fShutdown;
 extern bool fDaemon;
 extern bool fServer;
 extern bool fPosMinting;
+extern bool fCoinFolding;
 extern bool fCommandLine;
 extern std::string strMiscWarning;
 extern bool fTestNet;
@@ -245,7 +246,7 @@ void runCommand(std::string strCommand);
 
 inline std::string i64tostr(int64 n)
 {
-    return strprintf("%"PRI64d, n);
+    return strprintf("%" PRI64d, n);
 }
 
 inline std::string itostr(int n)
