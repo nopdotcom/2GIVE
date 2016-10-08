@@ -2,14 +2,25 @@
 #define WALLETMODEL_H
 
 #include <QObject>
+#include <QFile>
+#include <QSqlQuery>
+#include <QSqlRecord>
 #include <vector>
 #include <map>
 
 #include "allocators.h" /* for SecureString */
+#include "giftcarddatamanager.h"
+#include "contactdatamanager.h"
+#include "sharedatamanager.h"
 
 class OptionsModel;
 class AddressTableModel;
+class ContactTableModel;
+class ContactDataManager;
+class GiftCardDataManager;
 class GiftCardTableModel;
+class ShareTableModel;
+class ShareDataManager;
 class TransactionTableModel;
 class CWallet;
 class CKeyID;
@@ -60,9 +71,11 @@ public:
         Unlocked      // wallet->IsCrypted() && !wallet->IsLocked()
     };
 
-    OptionsModel *getOptionsModel();
-    AddressTableModel *getAddressTableModel();
-    GiftCardTableModel *getGiftCardTableModel();
+    OptionsModel        *getOptionsModel();
+    AddressTableModel   *getAddressTableModel();
+    ContactTableModel   *getContactTableModel();
+    GiftCardTableModel  *getGiftCardTableModel();
+    ShareTableModel     *getShareTableModel();
     TransactionTableModel *getTransactionTableModel();
 
     qint64 getBalance() const;
@@ -130,16 +143,29 @@ public:
     void unlockCoin(COutPoint& output);
     void listLockedCoins(std::vector<COutPoint>& vOutpts);
 
+    GiftCardDataManager giftCardDataBase(void);
+    ContactDataManager contactDataBase(void);
+    ShareDataManager shareDataBase(void);
+
 private:
     CWallet *wallet;
+    QSqlDatabase    qdb;
+    QSqlDatabase    cdb;
+    GiftCardDataManager gcdb;
+    ContactDataManager ccdb;
+    ShareDataManager scdb;
+
 
     // Wallet has an options model for wallet-specific options
     // (transaction fee, for example)
     OptionsModel *optionsModel;
 
     AddressTableModel *addressTableModel;
+    ContactTableModel *contactTableModel;
     GiftCardTableModel  *giftCardTableModel;
+    ShareTableModel   *shareTableModel;
     TransactionTableModel *transactionTableModel;
+
 
     // Cache some values to be able to detect changes
     qint64 cachedBalance;
@@ -165,6 +191,7 @@ public slots:
     /* New, updated or removed address book entry */
     void updateAddressBook(const QString &address, const QString &label, bool isMine, int status);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
+    void updateContact(const QString &address, const QString &label, const QString &email, const QString &url, int status);
     void pollBalanceChanged();
 
 signals:

@@ -11,6 +11,8 @@
 #include "csvmodelwriter.h"
 #include "guiutil.h"
 #include "paperwallet.h"
+#include "giftcarddatamanager.h"
+#include "ui_interface.h"
 
 #include <QSortFilterProxyModel>
 #include <QClipboard>
@@ -27,7 +29,6 @@
 #endif
 
 extern int VanityGen(int addrtype, char *prefix, char *pubKey, char *privKey);
-
 
 GiftCardPage::GiftCardPage(Mode mode, Tabs tab, QWidget *parent) :
     QDialog(parent),
@@ -62,39 +63,45 @@ GiftCardPage::GiftCardPage(Mode mode, Tabs tab, QWidget *parent) :
         break;
     }
 
-    ui->labelExplanation->setVisible(true);
+//    ui->labelExplanation->setVisible(true);
     ui->deleteButton->setVisible(true);
-    ui->signMessage->setVisible(false);
-
-//dvd considering adding a "Give" option from the right click
 
     // Context menu actions
+    QAction *fundCardAction = new QAction(tr("Fund Gift*"), this);
     QAction *copyLabelAction = new QAction(tr("Copy &Label"), this);
     QAction *copyAddressAction = new QAction(ui->copyToClipboard->text(), this);
     QAction *editAction = new QAction(tr("&Edit"), this);
-    QAction *showQRCodeAction = new QAction(ui->showQRCode->text(), this);
-//    QAction *signMessageAction = new QAction(ui->signMessage->text(), this);
-    QAction *verifyMessageAction = new QAction(ui->verifyMessage->text(), this);
+    QAction *viewAction = new QAction(tr("View in browser"), this);
+    QAction *balanceAction = new QAction(tr("Update Balance"), this);
+    QAction *regenerateAction = new QAction(tr("Regenerate"), this);
+    QAction *reclaimAction = new QAction(tr("Reclaim"), this);
     deleteAction = new QAction(ui->deleteButton->text(), this);
 
     // Build context menu
     contextMenu = new QMenu();
+    contextMenu->addAction(fundCardAction);
     contextMenu->addAction(copyAddressAction);
     contextMenu->addAction(copyLabelAction);
     contextMenu->addAction(editAction);
     contextMenu->addAction(deleteAction);
     contextMenu->addSeparator();
-    contextMenu->addAction(showQRCodeAction);
-    contextMenu->addAction(verifyMessageAction);
+    contextMenu->addAction(viewAction);
+    contextMenu->addAction(balanceAction);
+    contextMenu->addAction(reclaimAction);
+    contextMenu->addAction(regenerateAction);
 
     // Connect signals for context menu actions
+
+
+    connect(fundCardAction, SIGNAL(triggered()), this, SLOT(on_fundButton_clicked()));
     connect(copyAddressAction, SIGNAL(triggered()), this, SLOT(on_copyToClipboard_clicked()));
     connect(copyLabelAction, SIGNAL(triggered()), this, SLOT(onCopyLabelAction()));
     connect(editAction, SIGNAL(triggered()), this, SLOT(onEditAction()));
+    connect(reclaimAction, SIGNAL(triggered()), this, SLOT(on_reclaimButton_clicked()));
     connect(deleteAction, SIGNAL(triggered()), this, SLOT(on_deleteButton_clicked()));
-    connect(showQRCodeAction, SIGNAL(triggered()), this, SLOT(on_showQRCode_clicked()));
-//    connect(signMessageAction, SIGNAL(triggered()), this, SLOT(on_signMessage_clicked()));
-    connect(verifyMessageAction, SIGNAL(triggered()), this, SLOT(on_verifyMessage_clicked()));
+    connect(viewAction, SIGNAL(triggered()), this, SLOT(on_viewButton_clicked()));
+    connect(balanceAction, SIGNAL(triggered()), this, SLOT(on_balanceButton_clicked()));
+    connect(regenerateAction, SIGNAL(triggered()), this, SLOT(on_regenerateButton_clicked()));
 
     connect(ui->tableView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextualMenu(QPoint)));
 
@@ -104,6 +111,13 @@ GiftCardPage::GiftCardPage(Mode mode, Tabs tab, QWidget *parent) :
     // Set default filepath to save to
     filePath = QDir::homePath();
     printf("homePath = %s\n", filePath.toStdString().c_str());
+
+    // Connect to SQLite database
+//    boost::filesystem::path gdbName = GetDataDir() / "giftcards.sqlite3";
+//    QString fqnDatabase = QString::fromStdString(gdbName.string());
+
+//    gcdb = GiftCardDataManager(fqnDatabase);
+
 }
 
 GiftCardPage::~GiftCardPage()
@@ -111,6 +125,20 @@ GiftCardPage::~GiftCardPage()
     delete ui;
 }
 
+void GiftCardPage::viewGiftCard(const QString &fileName)
+{
+    QFile file(fileName);
+
+    if (file.exists()) {
+        // save the user selected folder for easy next use
+        QFileInfo fileInfo(file.fileName());
+        filePath = fileInfo.absolutePath();
+
+        // launch browser to display/print
+        //QString url = "file://" + fileName;
+        QDesktopServices::openUrl(QUrl::fromLocalFile(fileName));
+    }
+}
 void GiftCardPage::setModel(GiftCardTableModel *model)
 {
     this->model = model;
@@ -128,6 +156,7 @@ void GiftCardPage::setModel(GiftCardTableModel *model)
 
     ui->tableView->setModel(proxyModel);
     ui->tableView->sortByColumn(0, Qt::AscendingOrder);
+    ui->tableView->resizeColumnsToContents();
 
     // Set column widths
 #if QT_VERSION < 0x050000
@@ -167,99 +196,216 @@ void GiftCardPage::onCopyLabelAction()
 
 void GiftCardPage::onEditAction()
 {
+    gcdb = model->giftCardDataBase();
+
     if(!ui->tableView->selectionModel())
         return;
     QModelIndexList indexes = ui->tableView->selectionModel()->selectedRows();
     if(indexes.isEmpty())
         return;
 
-
     CreateGiftDialog dlg(CreateGiftDialog::EditGiftAddress);
 
     dlg.setModel(model);
     QModelIndex origIndex = proxyModel->mapToSource(indexes.at(0));
     dlg.loadRow(origIndex.row());
-    dlg.exec();
+    if (dlg.exec()) {
+        QString pubkey = dlg.getAddress();
+        QString label = dlg.getLabel();
 
+        gcdb.updateCard(pubkey, label);
+    }
 }
 
-void GiftCardPage::on_signMessage_clicked()
+void GiftCardPage::on_editButton_clicked()
 {
-    QTableView *table = ui->tableView;
-    QModelIndexList indexes = table->selectionModel()->selectedRows(GiftCardTableModel::Address);
-    QString addr;
-
-    foreach (QModelIndex index, indexes)
-    {
-        QVariant address = index.data();
-        addr = address.toString();
-    }
-
-    emit signMessage(addr);
+    onEditAction();
 }
 
-void GiftCardPage::on_verifyMessage_clicked()
+
+void GiftCardPage::on_fundButton_clicked()
 {
     QTableView *table = ui->tableView;
-    QModelIndexList indexes = table->selectionModel()->selectedRows(GiftCardTableModel::Address);
-    QString addr;
+    GiftCardDataEntry   card;
 
-    foreach (QModelIndex index, indexes)
+    gcdb = model->giftCardDataBase();
+
+
+    if (!table->selectionModel())
+        return;
+
+    QModelIndexList indexes = table->selectionModel()->selectedRows(1);
+    if(!indexes.isEmpty())
     {
-        QVariant address = index.data();
-        addr = address.toString();
-    }
+        QString pubKey = indexes.at(0).data().toString();
 
-    emit verifyMessage(addr);
+        gcdb.readCard(pubKey, card);
+
+        QMetaObject::invokeMethod(this->parent()->parent(), "gotoSendCoinsGiftPage", GUIUtil::blockingGUIThreadConnection(),
+                                  Q_ARG(QString, pubKey),
+                                  Q_ARG(QString, card.label));
+    }
 }
 
 void GiftCardPage::on_newAddressButton_clicked()
 {
-    char    strPubKey[256],
-            strPrivKey[256];
+    GiftCardDataEntry   card;
+
+//    char    strPubKey[256],
+//            strPrivKey[256];
+
+    gcdb = model->giftCardDataBase();
 
     if(!model)
         return;
 
-    printf("GiftCardPage::on_newAddressButton(): CreateGiftDialog\n");
+//    printf("GiftCardPage::on_newAddressButton(): CreateGiftDialog\n");
     CreateGiftDialog dlg(CreateGiftDialog::NewGiftAddress);
     dlg.setModel(model);
     if(dlg.exec())
     {
-        printf("GiftCardPage::on_newAddressButton(): dlg.exec()\n");
+//        printf("GiftCardPage::on_newAddressButton(): dlg.exec()\n");
         newAddressToSelect = dlg.getAddress();
-        QStringList giftKeys = newAddressToSelect.split(":");
+        gcdb.readCard(newAddressToSelect, card);
 
-        strcpy(strPubKey, giftKeys.at(0).toStdString().c_str());
-        strcpy(strPrivKey, giftKeys.at(1).toStdString().c_str());
-        printf("strPubKey = %s\tstrPrivKey = %s\n", strPubKey, strPrivKey);
+//        QStringList giftKeys = newAddressToSelect.split(":");
+//        QString label = dlg.getLabel();
 
-//        QString appDirPath = QCoreApplication::applicationDirPath();
-//        printf("appDirPath = %s\n", appDirPath.toStdString().c_str());
+//        strcpy(strPubKey, giftKeys.at(0).toStdString().c_str());
+//        strcpy(strPrivKey, giftKeys.at(1).toStdString().c_str());
+//        printf("strPubKey = %s\tstrPrivKey = %s\n", strPubKey, strPrivKey);
 
-        QString defaultFileName = filePath + QDir::separator() + giftKeys.at(0) + ".html";
+//        QString defaultFileName = filePath + QDir::separator() + giftKeys.at(0) + ".html";
+        QString defaultFileName = filePath + QDir::separator() + card.pubkey + ".html";
 
-        printf("defaultFileName = %s\n", defaultFileName.toStdString().c_str());
+//        printf("defaultFileName = %s\n", defaultFileName.toStdString().c_str());
 
         QString fileName = GUIUtil::getSaveFileName(
                     this, tr("Save Gift* Card"), defaultFileName, tr("Cards (*.html)"));
 
         if (!fileName.isNull()) {
-            PaperWallet pWallet = PaperWallet(fileName, giftKeys.at(0), giftKeys.at(1), "");
+            card.filename = fileName;
+            PaperWallet pWallet = PaperWallet(card);
+//            PaperWallet pWallet = PaperWallet(fileName, giftKeys.at(0), giftKeys.at(1), "");
             if (pWallet.genWallet()) {
-                QFile file(fileName);
-                if (file.exists()) {
-                    // save the user selected folder for easy next use
-                    QFileInfo fileInfo(file.fileName());
-                    filePath = fileInfo.absolutePath();
-
-                    // launch browser to display/print
-                    //QString url = "file://" + fileName;
-                    QDesktopServices::openUrl(QUrl::fromLocalFile(fileName));
-                }
+//                gcdb.updateCard(giftKeys.at(0), label, fileName);
+                gcdb.updateCard(card.pubkey, card.label, fileName);
+                viewGiftCard(fileName);
             }
         }
     }
+}
+
+
+
+void GiftCardPage::on_regenerateButton_clicked()
+{
+    QTableView *table = ui->tableView;
+    GiftCardDataEntry   card;
+    QMessageBox msgBox;
+
+//    QString privKey, label, defaultFileName;
+    char    strPubKey[256],
+            strPrivKey[256];
+
+    msgBox.setWindowTitle("Regenerate Card");
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setDefaultButton(QMessageBox::Ok);
+
+    gcdb = model->giftCardDataBase();
+
+//    printf("GiftCardPage::on_regenerateButton()\n");
+
+    if (!table->selectionModel())
+        return;
+
+    QModelIndexList indexes = table->selectionModel()->selectedRows(1);
+    if(!indexes.isEmpty())
+    {
+        QString pubKey = indexes.at(0).data().toString();
+
+        gcdb.readCard(pubKey, card);
+
+        if (card.privkey != QString::fromStdString("")) {
+            strcpy(strPubKey, pubKey.toStdString().c_str());
+            strcpy(strPrivKey, card.privkey.toStdString().c_str());
+    //        printf("strPubKey = %s\tstrPrivKey = %s\n", strPubKey, strPrivKey);
+            if (card.filename == "") {
+                QString defaultFileName = filePath + QDir::separator() + card.pubkey + ".html";
+                card.filename = defaultFileName;
+            }
+
+            QString fileName = GUIUtil::getSaveFileName(
+                        this, tr("Save Gift* Card"), card.filename, tr("Cards (*.html)"));
+
+            if (!fileName.isNull()) {
+                PaperWallet pWallet = PaperWallet(card);
+//                PaperWallet pWallet = PaperWallet(fileName, pubKey, card.privkey, QString::number(card.balance), card.generated);
+                if (pWallet.genWallet()) {
+                    gcdb.updateCard(card.pubkey, card.label, fileName);
+                    model->updateEntry(card.pubkey, card.label, card.generated, card.balance, CT_UPDATED);
+                    viewGiftCard(fileName);
+                }
+            }
+        } else {
+            msgBox.setText("Cannot regenerate an imported card.");
+            msgBox.setInformativeText("Missing the private key.");
+            msgBox.exec();
+        }
+    }
+}
+
+void GiftCardPage::on_viewButton_clicked()
+{
+    QTableView *table = ui->tableView;
+    GiftCardDataEntry   card;
+//    QString privKey, label, fileName;
+
+    gcdb = model->giftCardDataBase();
+
+    if (!table->selectionModel())
+        return;
+
+    QModelIndexList indexes = table->selectionModel()->selectedRows(1);
+    if(!indexes.isEmpty())
+    {
+        QString pubKey = indexes.at(0).data().toString();
+
+        gcdb.readCard(pubKey, card);
+
+        if (!card.filename.isNull()) {
+              viewGiftCard(card.filename);
+        }
+    }
+}
+
+void GiftCardPage::on_balanceButton_clicked()
+{
+    float   balance = 0.0;
+    QTableView *table = ui->tableView;
+    GiftCardDataEntry   card;
+
+    gcdb = model->giftCardDataBase();
+
+    if (!table->selectionModel())
+        return;
+
+    gcdb.updateBalances();
+    model->refreshAddressTable();
+
+    return;
+
+    QModelIndexList indexes = table->selectionModel()->selectedRows(1);
+    if(!indexes.isEmpty())
+    {
+        QString pubKey = indexes.at(0).data().toString();
+
+        balance = gcdb.getBalance(pubKey);
+        gcdb.readCard(pubKey, card);
+        gcdb.updateCard(card.pubkey, card.label);
+        model->updateEntry(card.pubkey, card.label, card.generated, balance, CT_UPDATED);
+    }
+    model->refreshAddressTable();
 }
 
 void GiftCardPage::on_templateButton_clicked()
@@ -281,15 +427,85 @@ void GiftCardPage::on_templateButton_clicked()
     msgBox.exec();
 }
 
+void GiftCardPage::on_reclaimButton_clicked()
+{
+    QTableView *table = ui->tableView;
+    QMessageBox confirm;
+    QMessageBox msgBox;
+
+    GiftCardDataEntry   card;
+
+
+    if(!table->selectionModel())
+        return;
+
+    confirm.setWindowTitle("Reclaim Gift*Card");
+    confirm.setText("Are you sure you want to reclaim this Gift*Card?");
+    confirm.setStandardButtons(QMessageBox::Yes);
+    confirm.addButton(QMessageBox::No);
+    confirm.setDefaultButton(QMessageBox::No);
+
+    gcdb = model->giftCardDataBase();
+
+    QModelIndexList indexes = table->selectionModel()->selectedRows(1);
+    if(!indexes.isEmpty())
+    {
+        QString pubkey = indexes.at(0).data().toString();
+
+        if (gcdb.getBalance(pubkey) > 0.0) {
+            gcdb.readCard(pubkey, card);
+
+            if (confirm.exec() == QMessageBox::Yes) {
+                QMetaObject::invokeMethod(this->parent()->parent(), "gotoReceiveCoinsPageImport", GUIUtil::blockingGUIThreadConnection(),
+                                          Q_ARG(QString, card.privkey),
+                                          Q_ARG(QString, card.label));
+
+            }
+
+        } else {
+            msgBox.setText("Cannot reclaim an empty Gift*Card ");
+            msgBox.exec();
+        }
+    }
+}
 void GiftCardPage::on_deleteButton_clicked()
 {
     QTableView *table = ui->tableView;
+    QMessageBox msgBox;
+    QMessageBox confirm;
+
+    msgBox.setWindowTitle("Delete Card");
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setDefaultButton(QMessageBox::Ok);
+
+    confirm.setWindowTitle("Delete entry");
+    confirm.setText("Are you sure you want to delete this Gift*Card?");
+    confirm.setStandardButtons(QMessageBox::Yes);
+    confirm.addButton(QMessageBox::No);
+    confirm.setDefaultButton(QMessageBox::No);
+
+
+
+    gcdb = model->giftCardDataBase();
+
     if(!table->selectionModel())
         return;
-    QModelIndexList indexes = table->selectionModel()->selectedRows();
+    QModelIndexList indexes = table->selectionModel()->selectedRows(1);
     if(!indexes.isEmpty())
     {
-        table->model()->removeRow(indexes.at(0).row());
+        QString pubkey = indexes.at(0).data().toString();
+
+        if ((gcdb.getBalance(pubkey) == 0.0) || (QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)))
+        {
+            if (confirm.exec() == QMessageBox::Yes) {
+                table->model()->removeRow(indexes.at(0).row());
+                gcdb.deleteCard(pubkey, true);
+            }
+        } else {
+            msgBox.setText("Cannot delete a card with a balance.");
+            msgBox.setInformativeText("Hold Shift to force delete or reclaim the card by importing the private key.");
+            msgBox.exec();
+        }
     }
 }
 
@@ -305,21 +521,21 @@ void GiftCardPage::selectionChanged()
         // In gift tab, allow deletion of selection
         ui->deleteButton->setEnabled(true);
         ui->deleteButton->setVisible(true);
+        ui->viewButton->setEnabled(true);
+        ui->editButton->setEnabled(true);
+        ui->fundButton->setEnabled(true);
+        ui->regenerateButton->setEnabled(true);
         deleteAction->setEnabled(true);
-        ui->signMessage->setEnabled(false);
-        ui->signMessage->setVisible(false);
-        ui->verifyMessage->setEnabled(true);
-        ui->verifyMessage->setVisible(true);
         ui->copyToClipboard->setEnabled(true);
-        ui->showQRCode->setEnabled(true);
     }
     else
     {
+        ui->fundButton->setEnabled(false);
+        ui->regenerateButton->setEnabled(false);
+        ui->viewButton->setEnabled(false);
+        ui->editButton->setEnabled(false);
         ui->deleteButton->setEnabled(false);
-        ui->showQRCode->setEnabled(false);
         ui->copyToClipboard->setEnabled(false);
-        ui->signMessage->setEnabled(false);
-        ui->verifyMessage->setEnabled(false);
     }
 }
 
@@ -372,25 +588,6 @@ void GiftCardPage::exportClicked()
         QMessageBox::critical(this, tr("Error exporting"), tr("Could not write to file %1.").arg(filename),
                               QMessageBox::Abort, QMessageBox::Abort);
     }
-}
-
-void GiftCardPage::on_showQRCode_clicked()
-{
-#ifdef USE_QRCODE
-    QTableView *table = ui->tableView;
-    QModelIndexList indexes = table->selectionModel()->selectedRows(GiftCardTableModel::Address);
-
-    foreach (QModelIndex index, indexes)
-    {
-        QString address = index.data().toString(), label = index.sibling(index.row(), 0).data(Qt::EditRole).toString();
-
-        QRCodeDialog *dialog = new QRCodeDialog(address, label, tab == ReceivingTab, this);
-        if(optionsModel)
-            dialog->setModel(optionsModel);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-        dialog->show();
-    }
-#endif
 }
 
 void GiftCardPage::contextualMenu(const QPoint &point)

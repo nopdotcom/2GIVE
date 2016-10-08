@@ -168,7 +168,7 @@ timersub(struct timeval *a, struct timeval *b, struct timeval *result)
 /*
  * getopt() for Win32 -- public domain ripped from codeproject.com
  */
-
+/*
 TCHAR *optarg = NULL;
 int optind = 0;
 
@@ -237,7 +237,7 @@ int getopt(int argc, TCHAR *argv[], TCHAR *optstring)
 
     return c;
 }
-
+*/
 /*
  * If ptw32 is being linked in as a static library, make sure that
  * its process attach function gets called before main().
@@ -2944,6 +2944,10 @@ vg_prefix_context_add_patterns(vg_context_t *vcp,
         case 5:
             ats = "bitcoin script";
             bw = "\"3\"";
+            break;
+        case 39:
+            ats = "2GIVE";
+            bw = "\"G\"";
             break;
         case 111:
             ats = "testnet";

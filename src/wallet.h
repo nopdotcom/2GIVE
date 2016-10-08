@@ -135,7 +135,7 @@ public:
     CPubKey GenerateCustomKey(const char *prefix);
 
     // Generate a new key and add to wallet
-    CPubKey GenerateNewKey(const char *prefix);
+    CPubKey GenerateNewKey(char *prefix);
     // Adds a key to the store, and saves it to disk.
     bool AddKey(const CKey& key);
     // Adds a key to the store, without saving it to disk (used by LoadWallet)
@@ -191,7 +191,7 @@ public:
     std::string SendMoneyToDestination(const CTxDestination &address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
 
     bool NewKeyPool();
-    bool TopUpKeyPool();
+    bool TopUpKeyPool(std::string prefix);
     int64 AddReserveKey(const CKeyPool& keypool);
     void ReserveKeyFromKeyPool(int64& nIndex, CKeyPool& keypool);
     void KeepKey(int64 nIndex);
@@ -314,6 +314,11 @@ public:
      */
     boost::signals2::signal<void (CWallet *wallet, const CTxDestination &address, const std::string &label, bool isMine, ChangeType status)> NotifyAddressBookChanged;
 
+    /** Contact entry changed.
+     * @note called with lock cs_wallet held.
+     */
+    boost::signals2::signal<void (const std::string &address, const std::string &label, const std::string &email, const std::string &url, ChangeType status)> NotifyContactChanged;
+
     /** Gift card entry changed.
      * @note called with lock cs_wallet held // Until moved to SQLite
      */
@@ -323,6 +328,10 @@ public:
      * @note called with lock cs_wallet held.
      */
     boost::signals2::signal<void (CWallet *wallet, const uint256 &hashTx, ChangeType status)> NotifyTransactionChanged;
+
+    /** Show progress e.g. for rescan */
+    boost::signals2::signal<void (const std::string &title, int nProgress)> ShowProgress;
+
 };
 
 /** A key allocated from the key pool. */

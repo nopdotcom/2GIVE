@@ -1,35 +1,34 @@
-#ifndef GIFTCARDTABLEMODEL_H
-#define GIFTCARDTABLEMODEL_H
+#ifndef CONTACTTABLEMODEL_H
+#define CONTACTTABLEMODEL_H
 
 #include <QAbstractTableModel>
 #include <QStringList>
 
-#include "giftcarddatamanager.h"
+#include "contactdatamanager.h"
 
-
-class GiftCardTablePriv;
-//class CWallet;
+class ContactTablePriv;
+class CWallet;
 class WalletModel;
 
 /**
    Qt model of the address book in the core. This allows views to access and modify the address book.
  */
-class GiftCardTableModel : public QAbstractTableModel
+class ContactTableModel : public QAbstractTableModel
 {
     Q_OBJECT
 public:    
-    explicit GiftCardTableModel(GiftCardDataManager gcdb, WalletModel *parent = 0);
-    ~GiftCardTableModel();
+    explicit ContactTableModel(ContactDataManager ccdb, WalletModel *parent = 0);
+    ~ContactTableModel();
 
     enum ColumnIndex {
-        Label = 0,      // User specified label
-        Address = 1,    // 2GIVE address
-        Generated = 2,  // date generated / regenerated
-        Balance = 3
+        Label = 0,
+        Address = 1,
+        Email = 2,
+        URL = 3
     };
 
     enum RoleIndex {
-        TypeRole = Qt::UserRole /**< Type of address (#Send or #Receive or #Gift) */
+        TypeRole = Qt::UserRole /**< Type of address (#Send or #Receive) */
     };
 
     /** Return status of edit/insert operation */
@@ -40,8 +39,6 @@ public:
         WALLET_UNLOCK_FAILURE, /**< Wallet could not be unlocked to create new receiving address */
         KEY_GENERATION_FAILURE /**< Generating a new public key for a receiving address failed */
     };
-
-    static const QString Gift; /**< Specifies Gift* address */
 
     /** @name Methods overridden from QAbstractTableModel
         @{*/
@@ -58,7 +55,7 @@ public:
     /* Add an address to the model.
        Returns the added address on success, and an empty string otherwise.
      */
-    QString addRow(const QString &type, const QString &label, const QString &address);
+    QString addRow(const QString &label, const QString &address, const QString &email, const QString &url);
 
     /* Look up label for address in address book, if not found return empty string.
      */
@@ -71,12 +68,12 @@ public:
 
     EditStatus getEditStatus() const { return editStatus; }
 
-    GiftCardDataManager giftCardDataBase(void);
+    ContactDataManager contactDataBase(void);
 
 private:
     WalletModel *walletModel;
-    GiftCardDataManager gcdb;
-    GiftCardTablePriv *priv;
+    ContactDataManager ccdb;
+    ContactTablePriv *priv;
     QStringList columns;
     EditStatus editStatus;
 
@@ -89,10 +86,10 @@ signals:
 public slots:
     /* Update address list from core.
      */
-    void updateEntry(const QString &address, const QString &label, const QString &generate, const float balance, int status);
-    void refreshAddressTable(void);
+    void updateEntry(const QString &address, const QString &label, const QString &email, const QString &url, int status);
+    void refreshContactTable(void);
 
-    friend class GiftCardTablePriv;
+    friend class ContactTablePriv;
 };
 
-#endif // GiftCardTableModel_H
+#endif // CONTACTTABLEMODEL_H

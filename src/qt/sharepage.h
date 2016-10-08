@@ -1,12 +1,15 @@
-#ifndef ADDRESSBOOKPAGE_H
-#define ADDRESSBOOKPAGE_H
+#ifndef SHAREPAGE_H
+#define SHAREPAGE_H
+
+#include "sharedatamanager.h"
 
 #include <QDialog>
 
 namespace Ui {
-    class AddressBookPage;
+    class SharePage;
 }
-class AddressTableModel;
+
+class ShareTableModel;
 class OptionsModel;
 
 QT_BEGIN_NAMESPACE
@@ -19,7 +22,7 @@ QT_END_NAMESPACE
 
 /** Widget that shows a list of sending or receiving addresses.
   */
-class AddressBookPage : public QDialog
+class SharePage : public QDialog
 {
     Q_OBJECT
 
@@ -34,21 +37,20 @@ public:
         ForEditing  /**< Open address book for editing */
     };
 
-    explicit AddressBookPage(Mode mode, Tabs tab, QWidget *parent = 0);
-    ~AddressBookPage();
+    explicit SharePage(Mode mode, Tabs tab, QWidget *parent = 0);
+    ~SharePage();
 
-    void setModel(AddressTableModel *model);
+    void setModel(ShareTableModel *model);
     void setOptionsModel(OptionsModel *optionsModel);
     const QString &getReturnValue() const { return returnValue; }
-    void importPrivateKey(QString privkey, QString label);
 
 public slots:
     void done(int retval);
     void exportClicked();
 
 private:
-    Ui::AddressBookPage *ui;
-    AddressTableModel *model;
+    Ui::SharePage *ui;
+    ShareTableModel *model;
     OptionsModel *optionsModel;
     Mode mode;
     Tabs tab;
@@ -57,33 +59,31 @@ private:
     QMenu *contextMenu;
     QAction *deleteAction;
     QString newAddressToSelect;
+    ShareDataManager ccdb;
+
 
 private slots:
-    void on_newAddressButton_clicked();
-    void on_importButton_clicked();
     void on_giveButton_clicked();
-    void on_showQRCode_clicked();
-
-    void on_deleteButton_clicked();
     /** Copy address of currently selected address entry to clipboard */
     void on_copyToClipboard_clicked();
-    void on_signMessage_clicked();
     void on_verifyMessage_clicked();
+    void on_refreshButton_clicked();
+    void on_visitButton_clicked();
+
+
     void selectionChanged();
+    void on_showQRCode_clicked();
     /** Spawn contextual menu (right mouse menu) for address book entry */
     void contextualMenu(const QPoint &point);
 
     /** Copy label of currently selected address entry to clipboard */
     void onCopyLabelAction();
-    /** Edit currently selected address entry */
-    void onEditAction();
 
     /** New entry/entries were added to address table */
     void selectNewAddress(const QModelIndex &parent, int begin, int end);
 
 signals:
-    void signMessage(QString addr);
     void verifyMessage(QString addr);
 };
 
-#endif // ADDRESSBOOKDIALOG_H
+#endif // SHAREPAGE_H

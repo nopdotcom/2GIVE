@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>AddressBookPage</class>
- <widget class="QWidget" name="AddressBookPage">
+ <class>ContactPage</class>
+ <widget class="QWidget" name="ContactPage">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -17,12 +17,12 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QToolButton" name="newAddressButton">
+      <widget class="QToolButton" name="newContactButton">
        <property name="toolTip">
         <string>Create a new address</string>
        </property>
        <property name="text">
-        <string>&amp;New Address</string>
+        <string>&amp;New Contact</string>
        </property>
        <property name="icon">
         <iconset resource="../bitcoin.qrc">
@@ -37,13 +37,6 @@
       <widget class="QToolButton" name="giveButton">
        <property name="text">
         <string>Give</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QToolButton" name="importButton">
-       <property name="text">
-        <string>Import Private Key</string>
        </property>
       </widget>
      </item>
@@ -69,7 +62,7 @@
       <enum>Qt::CustomContextMenu</enum>
      </property>
      <property name="toolTip">
-      <string>Double-click to edit address or label</string>
+      <string>RIght-click for options</string>
      </property>
      <property name="tabKeyNavigation">
       <bool>false</bool>
@@ -93,6 +86,13 @@
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QToolButton" name="editButton">
+       <property name="text">
+        <string>Edit Contact</string>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QToolButton" name="copyToClipboard">
        <property name="toolTip">

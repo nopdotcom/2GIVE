@@ -1,12 +1,15 @@
-#ifndef ADDRESSBOOKPAGE_H
-#define ADDRESSBOOKPAGE_H
+#ifndef CONTACTPAGE_H
+#define CONTACTPAGE_H
+
+#include "contactdatamanager.h"
 
 #include <QDialog>
 
 namespace Ui {
-    class AddressBookPage;
+    class ContactPage;
 }
-class AddressTableModel;
+
+class ContactTableModel;
 class OptionsModel;
 
 QT_BEGIN_NAMESPACE
@@ -19,7 +22,7 @@ QT_END_NAMESPACE
 
 /** Widget that shows a list of sending or receiving addresses.
   */
-class AddressBookPage : public QDialog
+class ContactPage : public QDialog
 {
     Q_OBJECT
 
@@ -34,21 +37,20 @@ public:
         ForEditing  /**< Open address book for editing */
     };
 
-    explicit AddressBookPage(Mode mode, Tabs tab, QWidget *parent = 0);
-    ~AddressBookPage();
+    explicit ContactPage(Mode mode, Tabs tab, QWidget *parent = 0);
+    ~ContactPage();
 
-    void setModel(AddressTableModel *model);
+    void setModel(ContactTableModel *model);
     void setOptionsModel(OptionsModel *optionsModel);
     const QString &getReturnValue() const { return returnValue; }
-    void importPrivateKey(QString privkey, QString label);
 
 public slots:
     void done(int retval);
     void exportClicked();
 
 private:
-    Ui::AddressBookPage *ui;
-    AddressTableModel *model;
+    Ui::ContactPage *ui;
+    ContactTableModel *model;
     OptionsModel *optionsModel;
     Mode mode;
     Tabs tab;
@@ -57,19 +59,20 @@ private:
     QMenu *contextMenu;
     QAction *deleteAction;
     QString newAddressToSelect;
+    ContactDataManager ccdb;
+
 
 private slots:
-    void on_newAddressButton_clicked();
-    void on_importButton_clicked();
     void on_giveButton_clicked();
-    void on_showQRCode_clicked();
-
+    void on_editButton_clicked();
     void on_deleteButton_clicked();
+    void on_newContactButton_clicked();
     /** Copy address of currently selected address entry to clipboard */
     void on_copyToClipboard_clicked();
     void on_signMessage_clicked();
     void on_verifyMessage_clicked();
     void selectionChanged();
+    void on_showQRCode_clicked();
     /** Spawn contextual menu (right mouse menu) for address book entry */
     void contextualMenu(const QPoint &point);
 
@@ -86,4 +89,4 @@ signals:
     void verifyMessage(QString addr);
 };
 
-#endif // ADDRESSBOOKDIALOG_H
+#endif // CONTACTPAGE_H

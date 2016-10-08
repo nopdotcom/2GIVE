@@ -8,7 +8,7 @@
 #include <QFont>
 #include <QColor>
 
-extern int VanityGen(int addrtype, char *prefix, char *pubKey, char *privKey);
+//extern int VanityGen(int addrtype, char *prefix, char *pubKey, char *privKey);
 
 const QString AddressTableModel::Send = "S";
 const QString AddressTableModel::Receive = "R";
@@ -66,7 +66,7 @@ public:
                 const CBitcoinAddress& address = item.first;
                 const std::string& strName = item.second;
                 bool fMine = IsMine(*wallet, address.Get());
-                if (!QString::fromStdString(address.ToString()).contains("Gift"))
+//                if (!QString::fromStdString(address.ToString()).contains("Gift"))
                     cachedAddressTable.append(AddressTableEntry(fMine ? AddressTableEntry::Receiving : AddressTableEntry::Sending,
                                   QString::fromStdString(strName),
                                   QString::fromStdString(address.ToString())));
@@ -308,9 +308,6 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
     std::string strLabel = label.toStdString();
     std::string strAddress = address.toStdString();
 
-    char    strPubKey[256],
-            strPrivKey[256];
-
     editStatus = OK;
 
     if(type == Send)
@@ -410,4 +407,10 @@ int AddressTableModel::lookupAddress(const QString &address) const
 void AddressTableModel::emitDataChanged(int idx)
 {
     emit dataChanged(index(idx, 0, QModelIndex()), index(idx, columns.length()-1, QModelIndex()));
+}
+
+void AddressTableModel::refreshAddressTable(void)
+{
+    priv->refreshAddressTable();
+    emit dataChanged(index(0, 0, QModelIndex()), index(priv->size()-1, 0, QModelIndex()));
 }
