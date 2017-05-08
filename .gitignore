@@ -1,0 +1,10 @@
+.qmake*
+Makefile
+2give-temp/
+2GiveCoin-Qt.app/
+build/
+2GiveCoin-Qt.xcodeproj/
+DerivedData/
+Info.plist
+qrc_bitcoin.cpp
+qrc_stylesheet.cpp
